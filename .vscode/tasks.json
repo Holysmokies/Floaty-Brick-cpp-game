@@ -1,0 +1,49 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+        {
+            "type": "cppbuild",
+            "label": "C/C++: g++.exe build active file",
+            "command": "C:/mingw-64/mingw64/bin/g++.exe",
+            "args": [
+                "-g",
+                "-std=c++17",
+                "-I${workspaceFolder}/include",
+                "-L${workspaceFolder}/lib",
+                "${workspaceFolder}/src/glad.c",
+                "${workspaceFolder}/src/floatyBrick.cpp",
+                "${workspaceFolder}/src/2d_mesh_class.cpp",
+                //"${workspaceFolder}/src/3d_mesh_class.cpp",
+                "${workspaceFolder}/src/shaderClass.cpp",
+                "${workspaceFolder}/src/2dVAO.cpp",
+                "${workspaceFolder}/src/2dVBO.cpp",
+                //"${workspaceFolder}/src/3dVAO.cpp",
+                //"${workspaceFolder}/src/3dVBO.cpp",
+                "${workspaceFolder}/src/EBO.cpp",
+                "${workspaceFolder}/src/stb_image.cpp",
+                "${workspaceFolder}/src/textureClass.cpp",
+                "${workspaceFolder}/src/2dcameraClass.cpp",
+                //"${workspaceFolder}/src/3dcameraClass.cpp",
+                "${workspaceFolder}/src/2dmodels.cpp",
+                //"${workspaceFolder}/src/3dmodels.cpp",
+                "${workspaceFolder}/src/backgroundColor.cpp",
+                "${workspaceFolder}/src/player2d.cpp",
+                "${workspaceFolder}/src/obstacles.cpp",
+                "-lglfw3dll",
+                "-o",
+                "${workspaceFolder}/game.exe"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "detail": "compiler: C:/C:/path/to/g++.exe"
+        }
+    ]
+}

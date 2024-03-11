@@ -6,32 +6,40 @@
 #include "mesh/2d_mesh_class.h"
 #include "backgroundColor/backgroundColor.h"
 #include "player/player2d.h"
-#include "worldObjects/obstacles/obstacles.h"
+#include "worldObjects/obstacles/obstacle_constructor.h"
 
 namespace fs = std::filesystem;
 ////----------------------------------------------------------------------------------------//
 /*-----TO-DO LIST-----
 *URGENT*
 *  1. Check/Fix memory leak...
-        1a. MASSIVE - PLAYER INPUTS() --- FIXED
+        1a. MASSIVE - PLAYER INPUTS() --- FIXED ([same as 1c] changed mesh class to update VBO vertices instead of creating new Mesh)
         1b. SMALL - PLAYER DRAW() --- FIXED
-        1c. MASSIVE - OBJECT/PIPE DRAW()
+        1c. MASSIVE - OBJECT/PIPE DRAW() ---FIXED 
+
+*  2. Game Crashes/Nonresponsive
+        2a. Main loop pipe erase (massive memory leak and unresponsive, endless new pipe generation?) --- FIXED 
+                (infinite score point increase meant new pipe x position threshhold was always met)
+
 ----------------------
 *NORMAL*
+        (DONE)
 *  1. Adjust player gravity, remove ability to continuously jump (only rejump after speed is sufficiently negative)
-
+        (DONE)
 *  2. Add functionality to obscales file/class to create its own objects and randomize heights 
         given a close enough threshold to previous pipe's height.
 
+*  2b. Add Pipe Mirroring to top of screen.
+
 *  3. Add horizontal (and vertical?) collision checking to player and obstacles.
 
-*  4. Create fail state.
+*  4. Create fail state (do with #3).
 
 *  5. Add textures.
 
 *  6. Create start screen.
 
-*  7. Create point system.
+*  7. Create point system/difficulty increase.
 
 *  8. Create level system.
 */
@@ -72,10 +80,10 @@ GLuint playerIndices[] =
 //OBSTACLE VERTICES AND INDICES
 Vertex pipeVertices[] = 
 {
-    Vertex{glm::vec3(1.1f,  0.2f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(1.0f, 1.0f)}, //top right
-    Vertex{glm::vec3(1.0f,  0.2f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(0.0f, 1.0f)}, //top left
-    Vertex{glm::vec3(1.1f, -1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(1.0f, 0.0f)}, //bottom right
-    Vertex{glm::vec3(1.0f, -1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(0.0f, 0.0f)}, //bottom left
+    Vertex{glm::vec3(1.1f,  0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(1.0f, 1.0f)}, //top right
+    Vertex{glm::vec3(1.0f,  0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(0.0f, 1.0f)}, //top left
+    Vertex{glm::vec3(1.1f, -2.5f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(1.0f, 0.0f)}, //bottom right
+    Vertex{glm::vec3(1.0f, -2.5f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(0.0f, 0.0f)}, //bottom left
 };
 
 GLuint pipeIndices[] = 
@@ -160,8 +168,11 @@ int main()
     std::vector <GLuint> pipeIndcs(pipeIndices,  pipeIndices  + sizeof(pipeIndices) / sizeof(GLuint));
     std::vector <Texture> pipeText(pipeTextures, pipeTextures + sizeof(pipeTextures) / sizeof(Texture));
     
-    Pipe pipe1(pipeVerts, pipeIndcs, pipeText);
+    //Pipe pipe1(pipeVerts, pipeIndcs, pipeText);
     //-------------------------------------------------------------------------------------------//
+    //Seed random number generator
+    srand (static_cast <unsigned> (time(0)));
+    
     double prevTime = glfwGetTime();
     double curTime = 0;
     float frameRate = 1/60;
@@ -169,14 +180,29 @@ int main()
     bool red_dim = true;
     bool green_dim = true;
     bool blue_dim = true;
+
+    //x_amp amplifies difficulty over time
+    float x_amp = 0.0f;
+    int score_count = 0;
+    bool deleting = false;
+
+    float min = pipeVertices[0].position.y - 0.2f;
+    float max = min + 0.6f;
+    float x_modifier = 0.75f;
+
     glm::vec3 background_color = glm::vec3(1.0f);
+
+    std::vector <Pipe> pipes;
+    pipes.push_back(Pipe(pipeVerts, pipeIndcs, pipeText));
+
 
     //WHILE WINDOW IS OPEN
     while (!glfwWindowShouldClose(window))
     {  
         glClearColor(background_color.x, background_color.y, background_color.z, 1.0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        
+        //-------------------------------------------------------------------------------------------//
+        //Sets dynamic background color
         curTime = glfwGetTime();
         if (curTime - prevTime >= frameRate)
         {   
@@ -190,17 +216,37 @@ int main()
 
             prevTime = curTime;
         }
-        
+        //-------------------------------------------------------------------------------------------//
+        //Main Game Loop
         camera.updateMatrix(45.0f, 0.1f, 100.0f);
         
         player.Inputs(window);
         player.Draw(shaderProgram2d, camera);
 
-        //pipe1.Draw(shaderProgram2d, camera);
-        
+        //Delete pipe when goes off screen to the left
+        if (!pipes[0].on_screen && pipes[0].Vertices[0].position.x <= -1.2f)
+        {
+            //std::cout << "---DELETE PIPE---\n";
+            pipes.erase(pipes.begin());
+        }
+
+        for (int i = 0; i < pipes.size(); i++)
+        {   
+            pipes[i].Pipe::Draw(shaderProgram2d, camera);
+
+            //Create new pipe on set intervals
+            if (abs(1.0f - pipes[i].Vertices[0].position.x) <= 0.3f + x_amp && pipes.size() < i+2)
+            {   
+                float y_modifier = min + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max-min)));
+                pipes.push_back(new_pipe(pipeVerts, pipeIndcs, pipeText, x_modifier - x_amp, y_modifier));
+                //std::cout << "---X-THRESHOLD REACHED: " << abs(1.0f - pipes[i].Vertices[0].position.x) << "\n---DRAW NEW PIPE---" << i+1 << "x" << pipes.size() << std::endl;
+            }
+        }
+
+        x_amp += 0.002*score_count;
+
         glfwSwapBuffers(window);
         glfwPollEvents(); 
-
     }
     shaderProgram2d.Delete();
     glfwDestroyWindow(window);
